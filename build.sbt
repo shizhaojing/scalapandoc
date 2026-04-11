@@ -4,6 +4,8 @@ version := "0.1.0-SNAPSHOT"
 
 scalaVersion := "3.8.3"
 
+scalacOptions += "-Yexplicit-nulls"
+
 libraryDependencies ++= Seq(
   // CommonMark parsing - use all-in-one for simplicity
   "com.vladsch.flexmark" % "flexmark-all" % "0.64.8",

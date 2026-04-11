@@ -73,7 +73,7 @@ object MarkdownReader:
     // Handle bold **text**
     val boldPattern = """\*\*(.+?)\*\*""".r
     remaining = boldPattern.replaceAllIn(remaining, { m =>
-      val content = m.group(1)
+      val content = m.group(1).nn
       result = result :+ Inline.Strong(parseInline(content))
       ""
     })
@@ -81,7 +81,7 @@ object MarkdownReader:
     // Handle italic *text*
     val italicPattern = """\*(.+?)\*""".r
     remaining = italicPattern.replaceAllIn(remaining, { m =>
-      val content = m.group(1)
+      val content = m.group(1).nn
       result = result :+ Inline.Emph(parseInline(content))
       ""
     })
@@ -89,7 +89,7 @@ object MarkdownReader:
     // Handle code `text`
     val codePattern = """`(.+?)`""".r
     remaining = codePattern.replaceAllIn(remaining, { m =>
-      val content = m.group(1)
+      val content = m.group(1).nn
       result = result :+ Inline.Code(Attr.empty, content)
       ""
     })
@@ -97,8 +97,8 @@ object MarkdownReader:
     // Handle links [text](url)
     val linkPattern = """\[(.+?)\]\((.+?)\)""".r
     remaining = linkPattern.replaceAllIn(remaining, { m =>
-      val text = m.group(1)
-      val url = m.group(2)
+      val text = m.group(1).nn
+      val url = m.group(2).nn
       result = result :+ Inline.Link(Attr.empty, parseInline(text), (url, ""))
       ""
     })
