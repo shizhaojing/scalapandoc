@@ -1,0 +1,36 @@
+# Scala & sbt
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+target/
+project/target/
+project/project/
+
+.bsp/
+.metals/
+.bloop/
+metals.sbt
+
+# IDE
+.idea/
+*.iml
+*.iws
+.eclipse/
+.vscode/
+.settings/
+.classpath
+.claude/
+
+# macOS
+.DS_Store
+
+# Others
+*.swp
+*~
