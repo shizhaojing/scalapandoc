@@ -1,6 +1,8 @@
 package scalapandoc.writer
 
-import scalapandoc.ast.*
+import scalapandoc.ast.Block
+import scalapandoc.ast.Inline
+import scalapandoc.ast.Pandoc
 
 /** Writes Pandoc AST to Markdown format
  *

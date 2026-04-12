@@ -1,7 +1,11 @@
 package scalapandoc.ast
 
-import io.circe.*
-import scalapandoc.ast.TypeTags.*
+import io.circe.Decoder
+import io.circe.DecodingFailure
+import io.circe.Encoder
+import io.circe.Json
+import io.circe.JsonObject
+import scalapandoc.ast.{TypeTags as tt}
 
 /** JSON encoding/decoding for Pandoc AST
  *
@@ -11,37 +15,37 @@ object PandocCodec:
 
   // Helper for tagged JSON
   private def tagged(tag: String, content: Json): Json =
-    Json.obj((TypeField, Json.fromString(tag)), (ContentField, content))
+    Json.obj((tt.TypeField, Json.fromString(tag)), (tt.ContentField, content))
 
   private def taggedOnly(tag: String): Json =
-    Json.obj((TypeField, Json.fromString(tag)))
+    Json.obj((tt.TypeField, Json.fromString(tag)))
 
   // Inline encoding
   given Encoder[Inline] = Encoder.instance {
-    case Inline.Str(s) => tagged(Str, Json.fromString(s))
-    case Inline.Space => taggedOnly(Space)
-    case Inline.SoftBreak => taggedOnly(SoftBreak)
-    case Inline.LineBreak => taggedOnly(LineBreak)
-    case Inline.Emph(xs) => tagged(Emph, encodeInlineList(xs))
-    case Inline.Strong(xs) => tagged(Strong, encodeInlineList(xs))
-    case Inline.Strikeout(xs) => tagged(Strikeout, encodeInlineList(xs))
-    case Inline.Code(attr, text) => tagged(Code, Json.arr(
+    case Inline.Str(s) => tagged(tt.Str, Json.fromString(s))
+    case Inline.Space => taggedOnly(tt.Space)
+    case Inline.SoftBreak => taggedOnly(tt.SoftBreak)
+    case Inline.LineBreak => taggedOnly(tt.LineBreak)
+    case Inline.Emph(xs) => tagged(tt.Emph, encodeInlineList(xs))
+    case Inline.Strong(xs) => tagged(tt.Strong, encodeInlineList(xs))
+    case Inline.Strikeout(xs) => tagged(tt.Strikeout, encodeInlineList(xs))
+    case Inline.Code(attr, text) => tagged(tt.Code, Json.arr(
         encodeAttr(attr),
         Json.fromString(text)
       ))
-    case Inline.Link(attr, contents, (url, title)) => tagged(Link, Json.arr(
+    case Inline.Link(attr, contents, (url, title)) => tagged(tt.Link, Json.arr(
         encodeAttr(attr),
         encodeInlineList(contents),
         Json.fromString(url),
         Json.fromString(title)
       ))
-    case Inline.Image(attr, contents, (url, title)) => tagged(Image, Json.arr(
+    case Inline.Image(attr, contents, (url, title)) => tagged(tt.Image, Json.arr(
         encodeAttr(attr),
         encodeInlineList(contents),
         Json.fromString(url),
         Json.fromString(title)
       ))
-    case Inline.RawInline(fmt, text) => tagged(RawInline, Json.arr(
+    case Inline.RawInline(fmt, text) => tagged(tt.RawInline, Json.arr(
         Json.fromString(fmt),
         Json.fromString(text)
       ))
@@ -49,25 +53,25 @@ object PandocCodec:
 
   // Block encoding
   given Encoder[Block] = Encoder.instance {
-    case Block.Para(xs) => tagged(Para, encodeInlineList(xs))
-    case Block.Plain(xs) => tagged(Plain, encodeInlineList(xs))
-    case Block.Headline(level, attr, xs) => tagged(Headline, Json.arr(
+    case Block.Para(xs) => tagged(tt.Para, encodeInlineList(xs))
+    case Block.Plain(xs) => tagged(tt.Plain, encodeInlineList(xs))
+    case Block.Headline(level, attr, xs) => tagged(tt.Headline, Json.arr(
         Json.fromInt(level),
         encodeAttr(attr),
         encodeInlineList(xs)
       ))
-    case Block.CodeBlock(attr, lines) => tagged(CodeBlock, Json.arr(
+    case Block.CodeBlock(attr, lines) => tagged(tt.CodeBlock, Json.arr(
         encodeAttr(attr),
         Json.fromString(lines.mkString("\n"))
       ))
-    case Block.BlockQuote(xs) => tagged(BlockQuote, encodeBlockList(xs))
-    case Block.OrderedList(start, xs) => tagged(OrderedList, Json.arr(
+    case Block.BlockQuote(xs) => tagged(tt.BlockQuote, encodeBlockList(xs))
+    case Block.OrderedList(start, xs) => tagged(tt.OrderedList, Json.arr(
         Json.fromInt(start),
         encodeBlockListList(xs)
       ))
-    case Block.BulletList(xs) => tagged(BulletList, encodeBlockListList(xs))
-    case Block.HorizontalRule => taggedOnly(HorizontalRule)
-    case Block.Null => taggedOnly(Null)
+    case Block.BulletList(xs) => tagged(tt.BulletList, encodeBlockListList(xs))
+    case Block.HorizontalRule => taggedOnly(tt.HorizontalRule)
+    case Block.Null => taggedOnly(tt.Null)
   }
 
   // Meta encoding
@@ -82,49 +86,49 @@ object PandocCodec:
   // Pandoc document encoding
   given Encoder[Pandoc] = Encoder.instance { pandoc =>
     Json.obj(
-      (ApiVersionField, Json.arr(Json.fromInt(1), Json.fromInt(23))),
-      (MetaField, Encoder[Meta].apply(pandoc.meta)),
-      (BlocksField, Encoder[List[Block]].apply(pandoc.blocks))
+      (tt.ApiVersionField, Json.arr(Json.fromInt(1), Json.fromInt(23))),
+      (tt.MetaField, Encoder[Meta].apply(pandoc.meta)),
+      (tt.BlocksField, Encoder[List[Block]].apply(pandoc.blocks))
     )
   }
 
   // Inline decoding
   given Decoder[Inline] = Decoder.instance { cursor =>
-    cursor.get[String](TypeField).flatMap {
-      case Str => cursor.get[String](ContentField).map(Inline.Str(_))
-      case Space => Right(Inline.Space)
-      case SoftBreak => Right(Inline.SoftBreak)
-      case LineBreak => Right(Inline.LineBreak)
-      case Emph =>
-        cursor.get[Json](ContentField).map { json =>
+    cursor.get[String](tt.TypeField).flatMap {
+      case tt.Str => cursor.get[String](tt.ContentField).map(Inline.Str(_))
+      case tt.Space => Right(Inline.Space)
+      case tt.SoftBreak => Right(Inline.SoftBreak)
+      case tt.LineBreak => Right(Inline.LineBreak)
+      case tt.Emph =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Inline.Emph(decodeInlineList(json))
         }
-      case Strong =>
-        cursor.get[Json](ContentField).map { json =>
+      case tt.Strong =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Inline.Strong(decodeInlineList(json))
         }
-      case Strikeout =>
-        cursor.get[Json](ContentField).map { json =>
+      case tt.Strikeout =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Inline.Strikeout(decodeInlineList(json))
         }
-      case Code => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.Code => cursor.get[List[Json]](tt.ContentField).map { c =>
         Inline.Code(decodeAttr(c(0)), c(1).asString.getOrElse(""))
       }
-      case Link => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.Link => cursor.get[List[Json]](tt.ContentField).map { c =>
         Inline.Link(
           decodeAttr(c(0)),
           decodeInlineList(c(1)),
           (c(2).asString.getOrElse(""), c(3).asString.getOrElse(""))
         )
       }
-      case Image => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.Image => cursor.get[List[Json]](tt.ContentField).map { c =>
         Inline.Image(
           decodeAttr(c(0)),
           decodeInlineList(c(1)),
           (c(2).asString.getOrElse(""), c(3).asString.getOrElse(""))
         )
       }
-      case RawInline => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.RawInline => cursor.get[List[Json]](tt.ContentField).map { c =>
         Inline.RawInline(c(0).asString.getOrElse(""), c(1).asString.getOrElse(""))
       }
       case t => Left(DecodingFailure(s"Unknown Inline type: $t", cursor.history))
@@ -133,43 +137,43 @@ object PandocCodec:
 
   // Block decoding
   given Decoder[Block] = Decoder.instance { cursor =>
-    cursor.get[String](TypeField).flatMap {
-      case Para =>
-        cursor.get[Json](ContentField).map { json =>
+    cursor.get[String](tt.TypeField).flatMap {
+      case tt.Para =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Block.Para(decodeInlineList(json))
         }
-      case Plain =>
-        cursor.get[Json](ContentField).map { json =>
+      case tt.Plain =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Block.Plain(decodeInlineList(json))
         }
-      case Headline => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.Headline => cursor.get[List[Json]](tt.ContentField).map { c =>
         Block.Headline(
           c(0).asNumber.flatMap(_.toInt).getOrElse(1),
           decodeAttr(c(1)),
           decodeInlineList(c(2))
         )
       }
-      case CodeBlock => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.CodeBlock => cursor.get[List[Json]](tt.ContentField).map { c =>
         Block.CodeBlock(
           decodeAttr(c(0)),
           c(1).asString.getOrElse("").linesIterator.toList
         )
       }
-      case BlockQuote =>
-        cursor.get[Json](ContentField).map { json =>
+      case tt.BlockQuote =>
+        cursor.get[Json](tt.ContentField).map { json =>
           Block.BlockQuote(decodeBlockList(json))
         }
-      case OrderedList => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.OrderedList => cursor.get[List[Json]](tt.ContentField).map { c =>
         Block.OrderedList(
           c(0).asNumber.flatMap(_.toInt).getOrElse(1),
           decodeBlockListList(c(1))
         )
       }
-      case BulletList => cursor.get[List[Json]](ContentField).map { c =>
+      case tt.BulletList => cursor.get[List[Json]](tt.ContentField).map { c =>
         Block.BulletList(decodeBlockListList(c(0)))
       }
-      case HorizontalRule => Right(Block.HorizontalRule)
-      case Null => Right(Block.Null)
+      case tt.HorizontalRule => Right(Block.HorizontalRule)
+      case tt.Null => Right(Block.Null)
       case t => Left(DecodingFailure(s"Unknown Block type: $t", cursor.history))
     }
   }
@@ -186,8 +190,8 @@ object PandocCodec:
   // Pandoc document decoding
   given Decoder[Pandoc] = Decoder.instance { cursor =>
     for
-      meta <- cursor.get[Meta](MetaField)
-      blocks <- cursor.get[List[Block]](BlocksField)
+      meta <- cursor.get[Meta](tt.MetaField)
+      blocks <- cursor.get[List[Block]](tt.BlocksField)
     yield Pandoc(meta, blocks)
   }
 

@@ -1,7 +1,10 @@
 package scalapandoc.reader
 
-import scalapandoc.ast.*
-import scalapandoc.ast.TypeTags.*
+import scalapandoc.ast.Attr
+import scalapandoc.ast.Block
+import scalapandoc.ast.Inline
+import scalapandoc.ast.Meta
+import scalapandoc.ast.Pandoc
 
 /** Reads Markdown and converts to Pandoc-compatible AST
  *

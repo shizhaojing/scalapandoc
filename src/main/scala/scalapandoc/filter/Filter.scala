@@ -1,11 +1,16 @@
 package scalapandoc.filter
 
-import scalapandoc.ast.*
+import scalapandoc.ast.Attr
+import scalapandoc.ast.Block
+import scalapandoc.ast.Inline
+import scalapandoc.ast.Pandoc
 import scalapandoc.ast.PandocCodec.given
-import io.circe.*
-import io.circe.parser.*
-import io.circe.syntax.*
-import scala.sys.process.*
+import io.circe.Decoder
+import io.circe.Json
+import io.circe.parser.parse
+import io.circe.syntax.EncoderOps
+import scala.sys.process.Process
+import scala.sys.process.ProcessIO
 import java.io.{BufferedReader, InputStreamReader, OutputStreamWriter}
 import scala.util.{Try, Success, Failure}
 

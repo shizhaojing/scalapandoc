@@ -1,7 +1,8 @@
 package scalapandoc
 
 import munit.FunSuite
-import scalapandoc.ast.*
+import scalapandoc.ast.Block
+import scalapandoc.ast.Pandoc
 import scalapandoc.reader.MarkdownReader
 import scalapandoc.writer.MarkdownWriter
 import scalapandoc.filter.{Filter, Filters}

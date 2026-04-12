@@ -34,3 +34,5 @@ metals.sbt
 # Others
 *.swp
 *~
+temp*/
+.gitnexus

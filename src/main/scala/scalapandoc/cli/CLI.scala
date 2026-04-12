@@ -6,14 +6,14 @@ import scalapandoc.filter.{Filter, Filters, JsonFilter}
 import scalapandoc.ast.{Pandoc, PandocCodec}
 import scalapandoc.ast.PandocCodec.given
 import scopt.OParser
-import io.circe.syntax.*
-import io.circe.parser.*
+import io.circe.syntax.EncoderOps
+import io.circe.parser.parse
 import scala.io.Source
 
 /** Command-line interface for scalapandoc */
 @main def main(args: String*): Unit =
   val builder = OParser.builder[Config]
-  import builder.*
+  import builder.{opt, note, head, programName}
   val inputOpts = Seq(
     opt[String]("input")
       .action((x, c) => c.copy(input = Some(x)))
