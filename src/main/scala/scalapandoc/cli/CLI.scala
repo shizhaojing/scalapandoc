@@ -10,7 +10,91 @@ import io.circe.syntax.EncoderOps
 import io.circe.parser.parse
 import scala.io.Source
 
-/** Command-line interface for scalapandoc */
+case class Config(
+    command: Option[String] = None,
+    input: Option[String] = None,
+    output: Option[String] = None,
+    outputJson: Option[String] = None,
+    inputJson: Option[String] = None,
+    filters: List[String] = Nil,
+    capitalize: Boolean = false,
+    pretty: Boolean = false,
+    help: Boolean = false
+)
+
+object Cli:
+
+  /** Run the convert pipeline and return result or error message */
+  def run(config: Config): Either[String, String] =
+    try
+      // Step 1: Read input
+      val doc: Pandoc = config.inputJson match
+        case Some(jsonFile) =>
+          val json: String = Source.fromFile(jsonFile).mkString
+          parse(json) match
+            case Right(jsonValue: io.circe.Json) =>
+              PandocCodec.given_Decoder_Pandoc.decodeJson(jsonValue) match
+                case Right(decodedDoc: Pandoc) => decodedDoc
+                case Left(err)  => return Left(s"Error decoding JSON: $err")
+            case Left(err) => return Left(s"Error parsing JSON: $err")
+        case None =>
+          val markdown: String = config.input match
+            case Some(file) =>
+              Source.fromFile(file).mkString
+            case None =>
+              Source.stdin.getLines().mkString("\n")
+          MarkdownReader.read(markdown)
+
+      // Step 2: Apply filters
+      val filteredDoc: Pandoc = applyFilters(doc, config)
+
+      // Step 3: Write output
+      (config.outputJson, config.output) match
+        case (Some(jsonFile), None) =>
+          val json: io.circe.Json = filteredDoc.asJson
+          val jsonString: String = if config.pretty then json.spaces2 else json.noSpaces
+          import java.io.PrintWriter
+          new PrintWriter(jsonFile) { write(jsonString); close() }
+          Right(s"AST written to $jsonFile")
+
+        case (None, Some(outFile)) =>
+          MarkdownWriter.writeFile(filteredDoc, outFile)
+          Right(s"Output written to $outFile")
+
+        case (None, None) =>
+          val markdown: String = MarkdownWriter.write(filteredDoc)
+          Right(markdown)
+
+        case (Some(_), Some(_)) =>
+          Left("Cannot specify both --to-json and --output")
+
+    catch
+      case e: Exception =>
+        Left(s"Error: ${e.getMessage}")
+
+  def applyFilters(
+      doc: Pandoc,
+      config: Config
+  ): Pandoc =
+    val filters: scala.collection.mutable.ListBuffer[Filter] = scala.collection.mutable.ListBuffer.empty[Filter]
+
+    // Add built-in filters
+    if config.capitalize then filters += Filters.Capitalize
+
+    // Apply external filters
+    val result: Pandoc = config.filters.foldLeft(doc) { (currentDoc: Pandoc, filterCmd: String) =>
+      val parts: Array[String] = filterCmd.split(" ")
+      JsonFilter.runExternalFilter(currentDoc, parts.toList) match
+        case Right(filtered) => filtered
+        case Left(err)       =>
+          System.err.println(s"Filter error: $err")
+          currentDoc
+    }
+
+    // Apply internal filters
+    Filter.applyFilters(result, filters.toList)
+
+/** Command-line interface entry point */
 @main def main(args: String*): Unit =
   val builder = OParser.builder[Config]
   import builder.{opt, note, head, programName, cmd}
@@ -63,104 +147,11 @@ import scala.io.Source
     case Some(config) if config.help =>
       OParser.usage(parser)
     case Some(config) =>
-      run(config)
+      Cli.run(config) match
+        case Left(err) =>
+          System.err.println(err)
+          sys.exit(1)
+        case Right(msg) =>
+          println(msg)
     case _ =>
       OParser.usage(parser)
-
-  case class Config(
-      command: Option[String] = None,
-      input: Option[String] = None,
-      output: Option[String] = None,
-      outputJson: Option[String] = None,
-      inputJson: Option[String] = None,
-      filters: List[String] = Nil,
-      capitalize: Boolean = false,
-      pretty: Boolean = false,
-      help: Boolean = false
-  )
-
-  def run(config: Config): Unit =
-    try
-      // Step 1: Read input
-      val doc: Pandoc = config.inputJson match
-        case Some(jsonFile) =>
-          // Read from JSON AST
-          import scala.io.Source
-          val json: String = Source.fromFile(jsonFile).mkString
-          import io.circe.parser.parse
-          parse(json) match
-            case Right(jsonValue: io.circe.Json) =>
-              PandocCodec.given_Decoder_Pandoc.decodeJson(jsonValue) match
-                case Right(decodedDoc: Pandoc) => decodedDoc
-                case Left(err)  =>
-                  System.err.println(s"Error decoding JSON: $err")
-                  sys.exit(1)
-            case Left(err) =>
-              System.err.println(s"Error parsing JSON: $err")
-              sys.exit(1)
-        case None =>
-          // Read from Markdown
-          val markdown: String = config.input match
-            case Some(file) =>
-              Source.fromFile(file).mkString
-            case None =>
-              // Read from stdin
-              Source.stdin.getLines().mkString("\n")
-          MarkdownReader.read(markdown)
-
-      // Step 2: Apply filters
-      val filteredDoc: Pandoc = applyFilters(doc, config)
-
-      // Step 3: Write output
-      (config.outputJson, config.output) match
-        case (Some(jsonFile), None) =>
-          // Output JSON AST
-          val json: io.circe.Json = filteredDoc.asJson
-          val jsonString: String = if config.pretty then json.spaces2 else json.noSpaces
-          import java.io.PrintWriter
-          new PrintWriter(jsonFile) { write(jsonString); close() }
-          println(s"AST written to $jsonFile")
-
-        case (None, Some(outFile)) =>
-          // Output Markdown
-          MarkdownWriter.writeFile(filteredDoc, outFile)
-          println(s"Output written to $outFile")
-
-        case (None, None) =>
-          // Output to stdout
-          val markdown: String = MarkdownWriter.write(filteredDoc)
-          println(markdown)
-
-        case (Some(_), Some(_)) =>
-          System.err.println("Cannot specify both --to-json and --output")
-          sys.exit(1)
-
-    catch
-      case e: Exception =>
-        System.err.println(s"Error: ${e.getMessage}")
-        e.printStackTrace()
-        sys.exit(1)
-
-  def applyFilters(
-      doc: scalapandoc.ast.Pandoc,
-      config: Config
-  ): scalapandoc.ast.Pandoc =
-    import scalapandoc.ast.Pandoc
-
-    val filters: scala.collection.mutable.ListBuffer[Filter] = scala.collection.mutable.ListBuffer.empty[Filter]
-
-    // Add built-in filters
-    if config.capitalize then filters += Filters.Capitalize
-
-    // Apply external filters
-    val result: Pandoc = config.filters.foldLeft(doc) { (currentDoc: Pandoc, filterCmd: String) =>
-      val parts: Array[String] = filterCmd.split(" ")
-      JsonFilter.runExternalFilter(currentDoc, parts.toList) match
-        case Right(filtered) => filtered
-        case Left(err)       =>
-          System.err.println(s"Filter error: $err")
-          currentDoc
-    }
-
-    // Apply internal filters
-    Filter.applyFilters(result, filters.toList)
