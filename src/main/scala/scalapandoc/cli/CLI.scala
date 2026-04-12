@@ -13,49 +13,49 @@ import scala.io.Source
 /** Command-line interface for scalapandoc */
 @main def main(args: String*): Unit =
   val builder = OParser.builder[Config]
-  import builder.{opt, note, head, programName}
-  val inputOpts = Seq(
-    opt[String]("input")
-      .action((x, c) => c.copy(input = Some(x)))
-      .text("Input file path (or stdin if not specified)"),
-    opt[String]("output")
-      .action((x, c) => c.copy(output = Some(x)))
-      .text("Output file path (or stdout if not specified)")
-  )
-  val OtherOpts = Seq(
-    opt[String]("to-json")
-      .action((x, c) => c.copy(outputJson = Some(x)))
-      .text("Output AST as JSON to file"),
-    opt[String]("from-json")
-      .action((x, c) => c.copy(inputJson = Some(x)))
-      .text("Read AST as JSON from file"),
-    opt[String]("filter")
-      .action((x, c) => c.copy(filters = c.filters :+ x))
-      .text("External filter command to apply")
-      .unbounded(),
-    opt[Unit]("capitalize")
-      .action((_, c) => c.copy(capitalize = true))
-      .text("Apply capitalize filter (example)"),
-    opt[Unit]("pretty")
-      .action((_, c) => c.copy(pretty = true))
-      .text("Pretty print JSON output"),
-    opt[Unit]("help")
-      .action((_, c) => c.copy(help = true))
-      .text("Show this help message"),
-    note("""
-        |Examples:
-        |  scalapandoc --input README.md --output output.md
-        |  scalapandoc --input README.md --to-json ast.json
-        |  scalapandoc --from-json ast.json --output output.md
-        |  scalapandoc --input README.md --filter ./my-filter.py
-        |  scalapandoc --input README.md --capitalize
-        |""".stripMargin)
-  )
+  import builder.{opt, note, head, programName, cmd}
   val parser = {
-    OParser.sequence(programName("scalapandoc"),
-      (Seq(
-        head("scalapandoc", "0.1.0")
-      ) ++ inputOpts ++ OtherOpts)*  // 每个 OptionDef 会被隐式转换为 OParser
+    val children = Seq(
+      opt[String]("input")
+        .action((x, c) => c.copy(input = Some(x)))
+        .text("Input file path (or stdin if not specified)"),
+      opt[String]("output")
+        .action((x, c) => c.copy(output = Some(x)))
+        .text("Output file path (or stdout if not specified)"),
+      opt[String]("to-json")
+        .action((x, c) => c.copy(outputJson = Some(x)))
+        .text("Output AST as JSON to file"),
+      opt[String]("from-json")
+        .action((x, c) => c.copy(inputJson = Some(x)))
+        .text("Read AST as JSON from file"),
+      opt[String]("filter")
+        .action((x, c) => c.copy(filters = c.filters :+ x))
+        .text("External filter command to apply")
+        .unbounded(),
+      opt[Unit]("capitalize")
+        .action((_, c) => c.copy(capitalize = true))
+        .text("Apply capitalize filter"),
+      opt[Unit]("pretty")
+        .action((_, c) => c.copy(pretty = true))
+        .text("Pretty print JSON output"),
+      note("""
+              |Examples:
+              |  scalapandoc convert --input README.md --output output.md
+              |  scalapandoc convert --input README.md --to-json ast.json
+              |  scalapandoc convert --from-json ast.json --output output.md
+              |  scalapandoc convert --input README.md --filter ./my-filter.py
+              |  scalapandoc convert --input README.md --capitalize
+              |""".stripMargin)
+    );
+    OParser.sequence(
+      programName("scalapandoc"),
+      head("scalapandoc", "0.1.0"),
+      cmd("convert")
+        .action((_, c) => c.copy(command = Some("convert")))
+        .text("Convert between Markdown and Pandoc JSON AST")
+        .children(
+          children*
+        )
     )
   }
 
@@ -68,6 +68,7 @@ import scala.io.Source
       OParser.usage(parser)
 
   case class Config(
+      command: Option[String] = None,
       input: Option[String] = None,
       output: Option[String] = None,
       outputJson: Option[String] = None,
