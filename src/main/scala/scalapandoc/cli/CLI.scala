@@ -14,8 +14,8 @@ import scala.io.Source
 @main def main(args: String*): Unit =
   val builder = OParser.builder[Config]
   import builder.{opt, note, head, programName, cmd}
-  val parser = {
-    val children = Seq(
+  val parser: OParser[Unit, Config] = {
+    val children: Seq[OParser[?, Config]] = Seq(
       opt[String]("input")
         .action((x, c) => c.copy(input = Some(x)))
         .text("Input file path (or stdin if not specified)"),
@@ -82,16 +82,16 @@ import scala.io.Source
   def run(config: Config): Unit =
     try
       // Step 1: Read input
-      val doc = config.inputJson match
+      val doc: Pandoc = config.inputJson match
         case Some(jsonFile) =>
           // Read from JSON AST
           import scala.io.Source
-          val json = Source.fromFile(jsonFile).mkString
+          val json: String = Source.fromFile(jsonFile).mkString
           import io.circe.parser.parse
           parse(json) match
-            case Right(json) =>
-              PandocCodec.given_Decoder_Pandoc.decodeJson(json) match
-                case Right(doc) => doc
+            case Right(jsonValue: io.circe.Json) =>
+              PandocCodec.given_Decoder_Pandoc.decodeJson(jsonValue) match
+                case Right(decodedDoc: Pandoc) => decodedDoc
                 case Left(err)  =>
                   System.err.println(s"Error decoding JSON: $err")
                   sys.exit(1)
@@ -100,7 +100,7 @@ import scala.io.Source
               sys.exit(1)
         case None =>
           // Read from Markdown
-          val markdown = config.input match
+          val markdown: String = config.input match
             case Some(file) =>
               Source.fromFile(file).mkString
             case None =>
@@ -109,14 +109,14 @@ import scala.io.Source
           MarkdownReader.read(markdown)
 
       // Step 2: Apply filters
-      val filteredDoc = applyFilters(doc, config)
+      val filteredDoc: Pandoc = applyFilters(doc, config)
 
       // Step 3: Write output
       (config.outputJson, config.output) match
         case (Some(jsonFile), None) =>
           // Output JSON AST
-          val json = filteredDoc.asJson
-          val jsonString = if config.pretty then json.spaces2 else json.noSpaces
+          val json: io.circe.Json = filteredDoc.asJson
+          val jsonString: String = if config.pretty then json.spaces2 else json.noSpaces
           import java.io.PrintWriter
           new PrintWriter(jsonFile) { write(jsonString); close() }
           println(s"AST written to $jsonFile")
@@ -128,7 +128,7 @@ import scala.io.Source
 
         case (None, None) =>
           // Output to stdout
-          val markdown = MarkdownWriter.write(filteredDoc)
+          val markdown: String = MarkdownWriter.write(filteredDoc)
           println(markdown)
 
         case (Some(_), Some(_)) =>
@@ -147,14 +147,14 @@ import scala.io.Source
   ): scalapandoc.ast.Pandoc =
     import scalapandoc.ast.Pandoc
 
-    val filters = scala.collection.mutable.ListBuffer.empty[Filter]
+    val filters: scala.collection.mutable.ListBuffer[Filter] = scala.collection.mutable.ListBuffer.empty[Filter]
 
     // Add built-in filters
     if config.capitalize then filters += Filters.Capitalize
 
     // Apply external filters
-    val result = config.filters.foldLeft(doc) { (currentDoc, filterCmd) =>
-      val parts = filterCmd.split(" ")
+    val result: Pandoc = config.filters.foldLeft(doc) { (currentDoc: Pandoc, filterCmd: String) =>
+      val parts: Array[String] = filterCmd.split(" ")
       JsonFilter.runExternalFilter(currentDoc, parts.toList) match
         case Right(filtered) => filtered
         case Left(err)       =>

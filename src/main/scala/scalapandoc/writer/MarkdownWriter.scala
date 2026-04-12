@@ -12,7 +12,7 @@ object MarkdownWriter:
 
   /** Write a Pandoc document to Markdown string */
   def write(doc: Pandoc): String =
-    val sb = new StringBuilder
+    val sb: StringBuilder = new StringBuilder
 
     // Write metadata
     if doc.meta.title.nonEmpty then
@@ -37,11 +37,11 @@ object MarkdownWriter:
         writeInlines(contents)
 
       case Block.Headline(level, _, contents) =>
-        val hashes = "#" * level
+        val hashes: String = "#" * level
         s"$hashes ${writeInlines(contents)}"
 
       case Block.CodeBlock(_, lines) =>
-        val content = lines.mkString("\n")
+        val content: String = lines.mkString("\n")
         s"```\n$content\n```"
 
       case Block.BlockQuote(contents) =>
@@ -54,7 +54,7 @@ object MarkdownWriter:
 
       case Block.OrderedList(start, items) =>
         items.zipWithIndex.map { case (item, idx) =>
-          val num = start + idx
+        val num: Int = start + idx
           item.map(b => s"$num. " + writeBlock(b).trim).mkString("\n")
         }.mkString("\n")
 
@@ -87,7 +87,7 @@ object MarkdownWriter:
   /** Write to a file */
   def writeFile(doc: Pandoc, path: String): Unit =
     import java.io.{File, PrintWriter}
-    val pw = new PrintWriter(new File(path))
+    val pw: PrintWriter = new PrintWriter(new File(path))
     try
       pw.write(write(doc))
     finally

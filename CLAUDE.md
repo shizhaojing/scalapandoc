@@ -31,6 +31,7 @@ Dependency flow: `cli` → `reader`/`writer`/`filter` → `ast`.
 - **No wildcard imports.** Always list explicit imports; do not use `import foo.*` or `import foo._`.
   - Exception: `given` imports (`import PandocCodec.given`) are acceptable since they cannot be enumerated.
 - **Compiler flag `-Yexplicit-nulls` is enabled.** Java API calls returning nullable types must use `.nn` or explicit null checks.
+- **All variables must have explicit type annotations.** Every `val`/`var`/`def` must declare its type (e.g. `val name: String = ...`, `def foo(x: Int): String`).
 - Scala 3 syntax throughout: significant indentation, `enum`, `given`/`using`, optional braces.
 
 <!-- gitnexus:start -->

@@ -15,21 +15,21 @@ import io.circe.parser.parse
 class CliTest extends FunSuite:
 
   private def writeTemp(name: String, content: String): File =
-    val f = File.createTempFile(s"scalapandoc-$name-", ".tmp")
+    val f: File = File.createTempFile(s"scalapandoc-$name-", ".tmp")
     f.deleteOnExit()
-    val pw = new PrintWriter(f)
+    val pw: PrintWriter = new PrintWriter(f)
     try pw.write(content)
     finally pw.close()
     f
 
   private def readFile(f: File): String =
-    val s = Source.fromFile(f)
+    val s: Source = Source.fromFile(f)
     try s.mkString
     finally s.close()
 
   test("markdown to markdown via files") {
     val input = writeTemp("input", "# Hello\n\nThis is **bold** text.")
-    val output = File.createTempFile("scalapandoc-output-", ".tmp")
+    val output: File = File.createTempFile("scalapandoc-output-", ".tmp")
     output.deleteOnExit()
 
     val doc = MarkdownReader.readFile(input.getAbsolutePath)
@@ -42,8 +42,8 @@ class CliTest extends FunSuite:
   test("markdown to JSON") {
     val input = writeTemp("input", "# Hello\n\nSome text.")
 
-    val doc = MarkdownReader.readFile(input.getAbsolutePath)
-    val json = doc.asJson.noSpaces
+    val doc: Pandoc = MarkdownReader.readFile(input.getAbsolutePath)
+    val json: String = doc.asJson.noSpaces
     assert(json.contains("pandoc-api-version"))
     assert(json.contains("blocks"))
     assert(json.contains("Hello"))
@@ -53,24 +53,24 @@ class CliTest extends FunSuite:
     val original = "# Hello\n\nSome text."
     val input = writeTemp("input", original)
 
-    val doc = MarkdownReader.readFile(input.getAbsolutePath)
-    val json = doc.asJson.spaces2
+    val doc: Pandoc = MarkdownReader.readFile(input.getAbsolutePath)
+    val json: String = doc.asJson.spaces2
 
-    val jsonFile = writeTemp("json", json)
-    val jsonStr = readFile(jsonFile)
-    val parsed = parse(jsonStr).toTry.get
-    val decoded = io.circe.Decoder[Pandoc].decodeJson(parsed).toTry.get
+    val jsonFile: File = writeTemp("json", json)
+    val jsonStr: String = readFile(jsonFile)
+    val parsed: io.circe.Json = parse(jsonStr).toTry.get
+    val decoded: Pandoc = io.circe.Decoder[Pandoc].decodeJson(parsed).toTry.get
 
-    val md = MarkdownWriter.write(decoded)
+    val md: String = MarkdownWriter.write(decoded)
     assert(md.contains("Hello"))
   }
 
   test("capitalize built-in filter") {
     val input = writeTemp("input", "# hello\n\nthis is a test.")
 
-    val doc = MarkdownReader.readFile(input.getAbsolutePath)
-    val filtered = Filter.applyFilters(doc, List(Filters.Capitalize))
-    val md = MarkdownWriter.write(filtered)
+    val doc: Pandoc = MarkdownReader.readFile(input.getAbsolutePath)
+    val filtered: Pandoc = Filter.applyFilters(doc, List(Filters.Capitalize))
+    val md: String = MarkdownWriter.write(filtered)
     assert(md.nonEmpty)
   }
 
@@ -79,13 +79,13 @@ class CliTest extends FunSuite:
     val input = writeTemp("input", original)
 
     // md -> json
-    val doc = MarkdownReader.readFile(input.getAbsolutePath)
-    val json = doc.asJson.spaces2
+    val doc: Pandoc = MarkdownReader.readFile(input.getAbsolutePath)
+    val json: String = doc.asJson.spaces2
 
     // json -> md
-    val parsed = parse(json).toTry.get
-    val decoded = io.circe.Decoder[Pandoc].decodeJson(parsed).toTry.get
-    val md = MarkdownWriter.write(decoded)
+    val parsed: io.circe.Json = parse(json).toTry.get
+    val decoded: Pandoc = io.circe.Decoder[Pandoc].decodeJson(parsed).toTry.get
+    val md: String = MarkdownWriter.write(decoded)
 
     assert(md.contains("Hello"))
     assert(md.contains("bold"))
@@ -93,7 +93,7 @@ class CliTest extends FunSuite:
 
   test("pretty JSON output uses spaces2") {
     val input = writeTemp("input", "# Test")
-    val doc = MarkdownReader.readFile(input.getAbsolutePath)
-    val json = doc.asJson.spaces2
+    val doc: Pandoc = MarkdownReader.readFile(input.getAbsolutePath)
+    val json: String = doc.asJson.spaces2
     assert(json.contains("\n  "))  // pretty-printed has indentation
   }

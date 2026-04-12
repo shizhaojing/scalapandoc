@@ -32,7 +32,7 @@ object Filter:
 
   private def transformBlock(block: Block, filter: Filter): Block =
     // Transform inner inlines first, then apply filter to block
-    val withInlinesTransformed = block match
+    val withInlinesTransformed: Block = block match
       case Block.Para(contents) =>
         Block.Para(contents.map(transformInline(_, filter)))
       case Block.Plain(contents) =>
@@ -51,7 +51,7 @@ object Filter:
 
   private def transformInline(inline: Inline, filter: Filter): Inline =
     // Recursively transform nested inlines first
-    val withInnerTransformed = inline match
+    val withInnerTransformed: Inline = inline match
       case Inline.Emph(contents) =>
         Inline.Emph(contents.map(transformInline(_, filter)))
       case Inline.Strong(contents) =>
@@ -75,15 +75,15 @@ object JsonFilter:
   def runExternalFilter(doc: Pandoc, command: List[String]): Either[String, Pandoc] =
     try
       // Serialize document to JSON (pandoc format)
-      val json = doc.asJson.toString
+      val json: String = doc.asJson.toString
 
       // Use scala.sys.process with ProcessIO
       var outputJson: Option[String] = None
       var errorMsg: Option[String] = None
 
-      val processIO = new ProcessIO(
-        stdin => {
-          val out = new OutputStreamWriter(stdin)
+      val processIO: ProcessIO = new ProcessIO(
+        (stdin: java.io.OutputStream) => {
+          val out: OutputStreamWriter = new OutputStreamWriter(stdin)
           try
             out.write(json)
             out.write("\n")
@@ -91,32 +91,32 @@ object JsonFilter:
           finally
             out.close()
         },
-        stdout => {
-          val in = new BufferedReader(new InputStreamReader(stdout))
+        (stdout: java.io.InputStream) => {
+          val in: BufferedReader = new BufferedReader(new InputStreamReader(stdout))
           outputJson = Some(in.readLine())
           in.close()
         },
-        stderr => {
-          val err = new BufferedReader(new InputStreamReader(stderr))
-          val lines = Iterator continually err.readLine() takeWhile (_ != null)
+        (stderr: java.io.InputStream) => {
+          val err: BufferedReader = new BufferedReader(new InputStreamReader(stderr))
+          val lines: Iterator[String] = Iterator continually err.readLine() takeWhile (_ != null)
           if lines.nonEmpty then
             errorMsg = Some(lines.mkString("\n"))
           err.close()
         }
       )
 
-      val exitCode = Process(command).run(processIO).exitValue()
+      val exitCode: Int = Process(command).run(processIO).exitValue()
 
       if exitCode != 0 then
         Left(errorMsg.getOrElse(s"Filter exited with code $exitCode"))
       else
         outputJson match
           case None => Left("Filter produced no output")
-          case Some(jsonStr) =>
+          case Some(jsonStr: String) =>
             parse(jsonStr) match
-              case Right(json) =>
-                Decoder[Pandoc].decodeJson(json) match
-                  case Right(doc) => Right(doc)
+              case Right(jsonValue: Json) =>
+                Decoder[Pandoc].decodeJson(jsonValue) match
+                  case Right(decodedDoc: Pandoc) => Right(decodedDoc)
                   case Left(err) => Left(s"Failed to decode filter output: $err")
               case Left(err) => Left(s"Failed to parse filter output: $err")
 
@@ -127,7 +127,7 @@ object JsonFilter:
 /** Example filters */
 object Filters:
   /** Filter that capitalizes all text */
-  val Capitalize = new Filter:
+  val Capitalize: Filter = new Filter:
     def transform(inline: Inline): Inline =
       inline match
         case Inline.Str(s) => Inline.Str(s.toUpperCase)
@@ -136,7 +136,7 @@ object Filters:
     def transform(block: Block): Block = block
 
   /** Filter that removes comments */
-  val RemoveComments = new Filter:
+  val RemoveComments: Filter = new Filter:
     def transform(inline: Inline): Inline = inline
 
     def transform(block: Block): Block = block

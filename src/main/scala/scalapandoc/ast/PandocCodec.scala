@@ -206,9 +206,9 @@ object PandocCodec:
   private def decodeAttr(json: Json): Attr =
     json.asArray match
       case Some(arr) if arr.nonEmpty =>
-        val id = arr(0).asString.getOrElse("")
-        val classes = arr.lift(1).flatMap(_.asArray).getOrElse(Nil).flatMap(_.asString).toList
-        val attrs = arr.lift(2).flatMap(_.asObject).getOrElse(JsonObject.empty).toMap
+        val id: String = arr(0).asString.getOrElse("")
+        val classes: List[String] = arr.lift(1).flatMap(_.asArray).getOrElse(Nil).flatMap(_.asString).toList
+        val attrs: List[(String, String)] = arr.lift(2).flatMap(_.asObject).getOrElse(JsonObject.empty).toMap
           .flatMap((k, v) => v.asString.map((k, _))).toList
         Attr(id, classes, attrs)
       case _ => Attr.empty
