@@ -1,119 +1,13 @@
 package scalapandoc.ast
 
 import io.circe.*
-import io.circe.generic.semiauto.*
+import scalapandoc.ast.TypeTags.*
 
-/** Type tag constants for Pandoc JSON format */
-object TypeTags:
-  // Inline type tags
-  final val Str = "Str"
-  final val Space = "Space"
-  final val SoftBreak = "SoftBreak"
-  final val LineBreak = "LineBreak"
-  final val Emph = "Emph"
-  final val Strong = "Strong"
-  final val Strikeout = "Strikeout"
-  final val Superscript = "Superscript"
-  final val Subscript = "Subscript"
-  final val Quoted = "Quoted"
-  final val Cite = "Cite"
-  final val Code = "Code"
-  final val Math = "Math"
-  final val RawInline = "RawInline"
-  final val Link = "Link"
-  final val Image = "Image"
-  final val Note = "Note"
-  final val Span = "Span"
-  final val LineBlock = "LineBlock"
-
-  // Block type tags
-  final val Para = "Para"
-  final val Plain = "Plain"
-  final val CodeBlock = "CodeBlock"
-  final val RawBlock = "RawBlock"
-  final val BlockQuote = "BlockQuote"
-  final val OrderedList = "OrderedList"
-  final val BulletList = "BulletList"
-  final val DefinitionList = "DefinitionList"
-  final val Headline = "Header"
-  final val HorizontalRule = "HorizontalRule"
-  final val Table = "Table"
-  final val Div = "Div"
-  final val Null = "Null"
-
-  // Meta value type tags
-  final val MetaMap = "MetaMap"
-  final val MetaBool = "MetaBool"
-  final val MetaString = "MetaString"
-  final val MetaInlines = "MetaInlines"
-  final val MetaBlocks = "MetaBlocks"
-  final val MetaList = "MetaList"
-
-  // JSON field names
-  final val TypeField = "t"
-  final val ContentField = "c"
-  final val ApiVersionField = "pandoc-api-version"
-  final val MetaField = "meta"
-  final val BlocksField = "blocks"
-
-/** Pandoc API version compatibility */
-case class ApiVersion(major: Int, minor: Int, revision: Int)
-
-object ApiVersion:
-  val current = ApiVersion(1, 23, 0)
-
-/** Simple attribute tuple */
-case class Attr(identifier: String, classes: List[String], attributes: List[(String, String)])
-
-object Attr:
-  val empty = Attr("", List.empty, List.empty)
-
-/** Inline elements (simplified for initial version) */
-enum Inline:
-  case Str(contents: String)
-  case Space
-  case SoftBreak
-  case LineBreak
-  case Emph(contents: List[Inline])
-  case Strong(contents: List[Inline])
-  case Strikeout(contents: List[Inline])
-  case Code(attr: Attr, text: String)
-  case Link(attr: Attr, contents: List[Inline], target: (String, String))
-  case Image(attr: Attr, contents: List[Inline], target: (String, String))
-  case RawInline(format: String, text: String)
-
-/** Block elements (simplified for initial version) */
-enum Block:
-  case Para(contents: List[Inline])
-  case Plain(contents: List[Inline])
-  case Headline(level: Int, attr: Attr, contents: List[Inline])
-  case CodeBlock(attr: Attr, lines: List[String])
-  case BlockQuote(contents: List[Block])
-  case OrderedList(listStart: Int, items: List[List[Block]])
-  case BulletList(items: List[List[Block]])
-  case HorizontalRule
-  case Null
-
-/** Meta value (simplified) */
-enum MetaValue:
-  case MetaString(value: String)
-  case MetaBool(value: Boolean)
-  case MetaInlines(value: List[Inline])
-  case MetaBlocks(value: List[Block])
-  case MetaMap(value: Map[String, MetaValue])
-
-/** Meta information */
-case class Meta(title: List[Inline], authors: List[List[Inline]], date: List[Inline])
-
-/** The root Pandoc document */
-case class Pandoc(meta: Meta, blocks: List[Block])
-
-/** JSON encoding for Pandoc AST
+/** JSON encoding/decoding for Pandoc AST
  *
  * Uses a simplified tagged union format compatible with Pandoc.
  */
 object PandocCodec:
-  import TypeTags.*
 
   // Helper for tagged JSON
   private def tagged(tag: String, content: Json): Json =
